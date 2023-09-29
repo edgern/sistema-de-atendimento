@@ -1,18 +1,18 @@
-import React, { useState } from 'react'
-import Container from '../../components/Container'
-import io from 'socket.io-client'
+import React, { useState } from 'react';
+import Container from '../../components/Container';
+import io from 'socket.io-client';
 
-import * as S from './style'
+import * as S from './style';
 
-const socket = io('http://localhost:3000', { transports: ['websocket'] })
-socket.on('connect', () => console.log('[SOCKET] [DISPLAY] => New Connection'))
+const socket = io('http://localhost:8080', { transports: ['websocket'] });
+socket.on('connect', () => console.log('[SOCKET] [DISPLAY] => New Connection'));
 
 const DisplayTerminal = () => {
   const [password, setPassword] = useState('');
 
-  socket.on('password.tv.update', data => {
-    setPassword(data)
-  })
+  socket.on('password.tv.update', (data) => {
+    setPassword(data);
+  });
 
   return (
     <Container>
@@ -21,7 +21,7 @@ const DisplayTerminal = () => {
         <S.CurrentPassword>{password}</S.CurrentPassword>
       </S.Wrapper>
     </Container>
-  )
-}
+  );
+};
 
-export default DisplayTerminal
+export default DisplayTerminal;

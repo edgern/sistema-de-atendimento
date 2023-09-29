@@ -29,6 +29,7 @@ const ServiceTerminal = () => {
         <S.CurrentPassword>{password}</S.CurrentPassword>
         <p>Clique para proxima senha</p>
         <Button onClick={() => handleNextPassword()}>Chamar Senha</Button>
+        <Button onClick={() => handleNextPassword()}>Gerar relatório diário</Button>
       </S.Wrapper>
     </Container>
   )

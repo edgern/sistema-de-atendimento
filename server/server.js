@@ -1,95 +1,111 @@
-const koa = require('koa')
-const http = require('http')
-const socket = require('socket.io')
+const koa = require('koa');
+const http = require('http');
+const socket = require('socket.io');
 
-const app = new koa()
-const server = http.createServer(app.callback())
-const io = socket(server)
+const app = new koa();
+const server = http.createServer(app.callback());
+const io = socket(server);
 
-const SERVER_HOST = 'localhost'
-const SERVER_PORT = 8080
+const SERVER_HOST = 'localhost';
+const SERVER_PORT = 8080;
 
 const passwords = {
-  normal: [],
-  Prioridade: [],
+  SP: [],
+  SG: [],
+  SE: [],
   all: [],
-}
+};
 
-let N = 1
-let P = 1
-let count = 0
+const counters = {
+  SP: 1,
+  SG: 1,
+  SE: 1,
+};
+
+const getFormattedDate = () => {
+  const now = new Date();
+  const year = now.getFullYear().toString().slice(-2);
+  const month = ('0' + (now.getMonth() + 1)).slice(-2);
+  const day = ('0' + now.getDate()).slice(-2);
+  return `${year}${month}${day}`;
+};
+
+const generatePassword = (tipoSenha) => {
+  const sequenciaStr = ('0' + counters[tipoSenha]++).slice(-2);
+  const numeroSenha = `${getFormattedDate()}-${tipoSenha}${sequenciaStr}`;
+  return numeroSenha;
+};
 
 const getNormalPassword = () => {
-  const value = `N${N++}`
-  passwords['normal'].push(value)
-
-  passwords['all'].push(value)
-}
+  const value = generatePassword('SG');
+  passwords['SG'].push(value);
+  passwords['all'].push(value);
+};
 
 const getPrioritaryPassword = () => {
-  const value = `P${P++}`
-  passwords['Prioridade'].push(value)
+  const value = generatePassword('SP');
+  passwords['SP'].push(value);
+  passwords['all'].push(value);
+};
 
-  passwords['all'].push(value)
-}
+const getExamsPassword = () => {
+  const value = generatePassword('SE');
+  passwords['SE'].push(value);
+  passwords['all'].push(value);
+};
 
-const getData = data => {
-  data === 'normal' ? getNormalPassword() : getPrioritaryPassword()
-}
+const getData = (data) => {
+  switch (data) {
+    case 'SP':
+      getPrioritaryPassword();
+      break;
+    case 'SE':
+      getExamsPassword();
+      break;
+    default:
+      getNormalPassword();
+  }
+};
 
-const handleNextPassword = (data, firstPassword) => {
-  io.sockets.emit('password.next', firstPassword)
-  io.sockets.emit('password.tv.update', firstPassword)
-  io.sockets.emit(`password.tv.${data}`, firstPassword)
+const handleNextPassword = () => {
+  const firstPassword = passwords['all'][0];
+  if (firstPassword) {
+    const tipoSenha = firstPassword.substring(9, 11);
 
-  console.log(`[SOCKET] [SERVER] => NEXT PASSWORD ${firstPassword}`)
-}
+    io.sockets.emit('password.next', firstPassword);
+    io.sockets.emit('password.tv.update', firstPassword);
+    io.sockets.emit(`password.tv.${tipoSenha}`, firstPassword);
 
-io.on('connection', socket => {
-  console.log('[IO - CLIENT] Connection => server has a new connection')
+    console.log(`[SOCKET] [SERVER] => NEXT PASSWORD ${firstPassword}`);
+    passwords['all'].splice(0, 1);
+  } else {
+    console.log('Fila de senhas vazia.');
+  }
+};
 
-  socket.on('password.send', data => {
-    console.log('[SOCKET SERVER] New password type => ', data)
+io.on('connection', (socket) => {
+  console.log('[IO - CLIENT] Connection => server has a new connection');
 
-    getData(data)
-    io.sockets.emit('object.passwords', passwords)
-  })
+  socket.on('password.send', (data) => {
+    console.log('[SOCKET SERVER] New password type => ', data);
 
-  socket.on('password.next', data => {
-    const firstPassword = passwords['all'][0]
+    getData(data);
+    io.sockets.emit('object.passwords', passwords);
+  });
 
-    const isNormalPassword = firstPassword?.startsWith('N') && count < 2
-
-    if (isNormalPassword) {
-      handleNextPassword(data, firstPassword)
-      passwords['all'].splice(0, 1)
-
-      count++
-    } else {
-      for (let i = 0; i <= passwords['all'].length; i++) {
-        const firstPassword = passwords['all'][i]
-
-        if (passwords['all'][i]?.startsWith('P')) {
-          handleNextPassword(data, firstPassword)
-          passwords['all'].splice(i, 1)
-          count = 0
-          break
-        }
-      }
-
-      count = 0
-    }
-  })
+  socket.on('password.next', () => {
+    handleNextPassword();
+  });
 
   socket.on('disconnect', () => {
-    console.log('[SOCKET SERVER] User Disconnect')
-  })
-})
+    console.log('[SOCKET SERVER] User Disconnect');
+  });
+});
 
 server.listen(SERVER_PORT, SERVER_HOST, () => {
-  console.log('[http] Server running...')
-})
+  console.log('[http] Server running...');
+});
 
 server.off('server.off', () => {
-  console.log('[http] Server stopping...')
-})
+  console.log('[http] Server stopping...');
+});

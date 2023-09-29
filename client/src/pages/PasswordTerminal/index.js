@@ -1,27 +1,37 @@
-import React, { useState } from 'react'
-import io from 'socket.io-client'
+import React, { useState, useEffect } from 'react';
+import io from 'socket.io-client';
 
-import Container from '../../components/Container'
-import Button from '../../components/Button'
+import Container from '../../components/Container';
+import Button from '../../components/Button';
 
-import * as S from './styles'
+import * as S from './styles';
 
-const socket = io('http://localhost:8080', { transports: ['websocket'] })
-socket.on('connect', () => console.log('[SOCKET] [USER] => New Connection'))
+const socket = io('http://localhost:8080', { transports: ['websocket'] });
 
 const PasswordTerminal = () => {
-  const [currentPassword, setCurrentPassword] = useState()
-  const [thanksButton, setThanksButton] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [thanksButton, setThanksButton] = useState(false);
 
-  const selectPassword = category => {
-    socket.emit('password.send', category)
-    setThanksButton(true)
-  }
+  useEffect(() => {
+    socket.on('connect', () => {
+      console.log('[SOCKET] [USER] => New Connection');
+    });
 
-  socket.on('object.passwords', data => {
-    const allPasswords = data['all']
-    setCurrentPassword(allPasswords[allPasswords.length - 1])
-  })
+    socket.on('object.passwords', (data) => {
+      const allPasswords = data.all;
+      setCurrentPassword(allPasswords[allPasswords.length - 1]);
+    });
+
+    return () => {
+      socket.off('connect');
+      socket.off('object.passwords');
+    };
+  }, []);
+
+  const selectPassword = (category) => {
+    socket.emit('password.send', category);
+    setThanksButton(true);
+  };
 
   const showText = () => {
     return (
@@ -30,8 +40,8 @@ const PasswordTerminal = () => {
           Sua Senha: <span>{currentPassword}</span>
         </S.CurrentPassword>
       )
-    )
-  }
+    );
+  };
 
   const showPassword = () => {
     return (
@@ -41,17 +51,16 @@ const PasswordTerminal = () => {
             <Button onClick={() => setThanksButton(false)}>Voltar</Button>
           ) : (
             <>
-              <Button onClick={() => selectPassword('normal')}>Normal</Button>
-              <Button onClick={() => selectPassword('Prioridade')}>
-                Prioridade
-              </Button>
+              <Button onClick={() => selectPassword('SG')}>Normal</Button>
+              <Button onClick={() => selectPassword('SP')}>Prioritária</Button>
+              <Button onClick={() => selectPassword('SE')}>Retirada de exames</Button>
             </>
           )}
         </S.WrapperButtons>
         {showText()}
       </>
-    )
-  }
+    );
+  };
 
   return (
     <Container>
@@ -60,7 +69,7 @@ const PasswordTerminal = () => {
         {showPassword()}
       </S.Wrapper>
     </Container>
-  )
-}
+  );
+};
 
-export default PasswordTerminal
+export default PasswordTerminal;
